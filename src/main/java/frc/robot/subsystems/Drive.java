@@ -11,6 +11,7 @@ import com.revrobotics.RelativeEncoder;
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Translation2d;
+import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.util.Units;
 import edu.wpi.first.wpilibj.Filesystem;
 import edu.wpi.first.wpilibj.Timer;
@@ -38,6 +39,8 @@ public class Drive {
     final double DRIVE_GEAR_RATIO = 6.12;
     final double ANGLE_GEAR_RATIO = 21.4286;
     final double ENCODER_RESOLUTION = 42;
+    double lastHeadingRadians = 0;
+    boolean correctionEnabled = false;
 
     public BufferedWriter csvBackLeft;
     public BufferedWriter csvBackRight;
@@ -57,8 +60,8 @@ public class Drive {
 
         try {
             swerveParser = new SwerveParser(new File(Filesystem.getDeployDirectory(), "swerve/neo"));
-            drive = swerveParser.createSwerveDrive(Units.feetToMeters(5), angleConversionFactor, driveConversionFactor);
-            drive.setHeadingCorrection(true);
+            drive = swerveParser.createSwerveDrive(Units.feetToMeters(1), angleConversionFactor, driveConversionFactor);
+            drive.setHeadingCorrection(false);
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -87,11 +90,25 @@ public class Drive {
 
         if (driveStates == DriveStates.FIELD_ABSOLUTE) {
             state = "Field Absolute";
+            Translation2d translation = new Translation2d(xMovement, yMovement);
+            ChassisSpeeds velocity = new ChassisSpeeds(translation.getX(), translation.getY(), rotation);
+
+            SmartDashboard.putNumber("Rad per Sec", Math.abs(velocity.omegaRadiansPerSecond));
+            if (Math.abs(velocity.omegaRadiansPerSecond) < 0.01 && (Math.abs(velocity.vxMetersPerSecond) > 0.01 || Math.abs(velocity.vyMetersPerSecond) > 0.01)) {
+                if (!correctionEnabled) {
+                    lastHeadingRadians = drive.getYaw().getRadians();
+                    correctionEnabled = true;
+                }
+
+                velocity.omegaRadiansPerSecond = drive.getSwerveController().headingCalculate(lastHeadingRadians, drive.getYaw().getRadians());
+            } else {
+                correctionEnabled = false;
+            }
+
             drive.drive(
-                    new Translation2d(xMovement, yMovement),
-                    rotation,
+                    velocity,
                     false,
-                    false);
+                    new Translation2d());
             
             if (robot.controller.getBButtonPressed()) {
                 driveStates = DriveStates.FIELD_RELATIVE;
@@ -104,14 +121,28 @@ public class Drive {
         } else if (driveStates == DriveStates.FIELD_RELATIVE) {
             state = "Field Relative";
             if (robot.controller.getAButtonPressed()) {
+                lastHeadingRadians = 0;
                 drive.zeroGyro();
             }
 
+            Translation2d translation = new Translation2d(xMovement, yMovement);
+            ChassisSpeeds velocity2 = ChassisSpeeds.fromFieldRelativeSpeeds(translation.getX(), translation.getY(), rotation, drive.getYaw());
+            
+            if (Math.abs(velocity2.omegaRadiansPerSecond) < 0.01 && (Math.abs(velocity2.vxMetersPerSecond) > 0.01 || Math.abs(velocity2.vyMetersPerSecond) > 0.01)) {
+                if (!correctionEnabled) {
+                    lastHeadingRadians = drive.getYaw().getRadians();
+                    correctionEnabled = true;
+                }
+
+                velocity2.omegaRadiansPerSecond = drive.getSwerveController().headingCalculate(lastHeadingRadians, drive.getYaw().getRadians());
+            } else {
+                correctionEnabled = false;
+            }
+
             drive.drive(
-                    new Translation2d(xMovement, yMovement),
-                    rotation,
-                    true,
-                    false);
+                    velocity2,
+                    false,
+                    new Translation2d());
             
             if (robot.controller.getBButtonPressed()) {
                 driveStates = DriveStates.FIELD_ABSOLUTE;
