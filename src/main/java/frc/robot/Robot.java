@@ -67,21 +67,16 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 public class Robot extends TimedRobot {
   public XboxController controller = new XboxController(0);
   Drive drive = new Drive(this);
-  Vision vision = new Vision();
+  // Vision vision = new Vision();
 
-  
-    
-    
-    
-    PIDController forwardController = new PIDController(0.9, 0, 0.0);
-    
-    final double ANGULAR_P = 0.025;
-    final double ANGULAR_D = 0.0;
-    PIDController angleController = new PIDController(ANGULAR_P, 0, ANGULAR_D);
+  PIDController forwardController = new PIDController(0.9, 0, 0.0);
 
-    SlewRateLimiter filter = new SlewRateLimiter(0.5);
-    double previous_distance;
-    
+  final double ANGULAR_P = 0.025;
+  final double ANGULAR_D = 0.0;
+  PIDController angleController = new PIDController(ANGULAR_P, 0, ANGULAR_D);
+
+  SlewRateLimiter filter = new SlewRateLimiter(0.5);
+  double previous_distance;
 
   @Override
   public void robotInit() {
@@ -103,13 +98,13 @@ public class Robot extends TimedRobot {
   @Override
   public void teleopInit() {
   }
-  
+
   @Override
   public void teleopPeriodic() {
-  
-    if (vision.getPose2d().isPresent()) {
-      drive.addVisionMeasurement(vision.getPose2d(), Timer.getFPGATimestamp());
-    }
+
+    // if (vision.getPose2d().isPresent()) {
+    // drive.addVisionMeasurement(vision.getPose2d(), Timer.getFPGATimestamp());
+    // }
     drive.periodic();
   }
 

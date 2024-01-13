@@ -20,6 +20,7 @@ import swervelib.SwerveDrive;
 import swervelib.SwerveModule;
 import swervelib.math.SwerveMath;
 import swervelib.parser.SwerveParser;
+import swervelib.telemetry.SwerveDriveTelemetry;
 
 enum DriveStates {
     FIELD_ABSOLUTE,
@@ -28,7 +29,7 @@ enum DriveStates {
 }
 
 public class Drive {
-    static final double DEADBAND = 0.05;
+    static final double DEADBAND = 0.1;
     SwerveParser swerveParser;
     SwerveDrive drive;
     DriveStates driveStates = DriveStates.FIELD_ABSOLUTE;
@@ -44,14 +45,20 @@ public class Drive {
     public BufferedWriter csvFrontRight;
 
     public Drive(Robot robot) {
+        SwerveDriveTelemetry.verbosity = SwerveDriveTelemetry.TelemetryVerbosity.HIGH;
         this.robot = robot;
 
         double driveConversionFactor = SwerveMath.calculateMetersPerRotation(Units.inchesToMeters(WHEEL_DIAMETER), DRIVE_GEAR_RATIO, 1);
         double angleConversionFactor = SwerveMath.calculateDegreesPerSteeringRotation(ANGLE_GEAR_RATIO, 1);
+        
+        System.out.println(driveConversionFactor);
+        System.out.println(angleConversionFactor);
+
 
         try {
             swerveParser = new SwerveParser(new File(Filesystem.getDeployDirectory(), "swerve/neo"));
-            drive = swerveParser.createSwerveDrive(Units.feetToMeters(14.5), angleConversionFactor, driveConversionFactor);
+            drive = swerveParser.createSwerveDrive(Units.feetToMeters(5), angleConversionFactor, driveConversionFactor);
+            drive.setHeadingCorrection(true);
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -76,7 +83,7 @@ public class Drive {
         String state = "";
         double xMovement = MathUtil.applyDeadband(robot.controller.getLeftY(), DEADBAND);
         double yMovement = MathUtil.applyDeadband(robot.controller.getLeftX(), DEADBAND);
-        double rotation = robot.controller.getRightX();
+        double rotation = MathUtil.applyDeadband(robot.controller.getRightX(), DEADBAND);
 
         if (driveStates == DriveStates.FIELD_ABSOLUTE) {
             state = "Field Absolute";
